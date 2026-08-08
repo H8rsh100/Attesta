@@ -1,0 +1,23 @@
+{
+  "name": "attesta",
+  "version": "1.0.0",
+  "description": "Decentralized Identity and Credential Verification Platform",
+  "private": true,
+  "workspaces": [
+    "contracts",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "contracts:test": "cd contracts && npx hardhat test",
+    "contracts:compile": "cd contracts && npx hardhat compile",
+    "backend:dev": "cd backend && npm run dev",
+    "frontend:dev": "cd frontend && npm run dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/H8rsh100/Attesta.git"
+  },
+  "author": "",
+  "license": "ISC"
+}

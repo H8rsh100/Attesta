@@ -1,0 +1,48 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  walletAddress String   @unique @map("wallet_address")
+  // Cache of on-chain role -- source of truth is always the contract
+  isIssuer      Boolean  @default(false) @map("is_issuer")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  credentials   Credential[] @relation("IssuerCredentials")
+  subjects      Credential[] @relation("SubjectCredentials")
+
+  @@map("users")
+}
+
+model Credential {
+  // Matches the bytes32 credentialId used on-chain (hex string)
+  id              String   @id
+  issuerAddress   String   @map("issuer_address")
+  subjectAddress  String   @map("subject_address")
+  // Credential type e.g. "COURSE_COMPLETION", "IDENTITY", "BADGE"
+  credentialType  String   @map("credential_type")
+  name            String
+  description     String?
+  // Additional metadata stored off-chain
+  metadata        Json?
+  // The on-chain is the source of truth for validity; this is metadata only
+  issuedAt        DateTime @default(now()) @map("issued_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  issuer  User @relation("IssuerCredentials", fields: [issuerAddress], references: [walletAddress])
+  subject User @relation("SubjectCredentials", fields: [subjectAddress], references: [walletAddress])
+
+  @@index([issuerAddress])
+  @@index([subjectAddress])
+  @@map("credentials")
+}

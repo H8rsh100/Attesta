@@ -125,6 +125,42 @@ router.post(
 );
 
 /**
+ * POST /api/credentials/:id/revoke
+ * Revokes an existing credential on-chain.
+ * Requires: valid JWT + on-chain ISSUER_ROLE.
+ */
+router.post(
+  "/:id/revoke",
+  requireAuth,
+  requireIssuerRole,
+  async (req, res) => {
+    const { id } = req.params;
+
+    if (!id || !/^0x[a-fA-F0-9]{64}$/.test(id)) {
+      return res.status(400).json({ error: "Invalid credential ID format" });
+    }
+
+    try {
+      const contract = getContract();
+      const tx = await contract.revokeCredential(id);
+      const receipt = await tx.wait();
+
+      res.json({
+        success: true,
+        credentialId: id,
+        txHash: receipt.hash,
+        message: "Credential revoked successfully",
+      });
+    } catch (err) {
+      console.error("Credential revocation error:", err);
+      res.status(500).json({
+        error: err.reason || err.message || "Failed to revoke credential",
+      });
+    }
+  }
+);
+
+/**
  * GET /api/credentials
  * List credentials issued by the authenticated user.
  */
@@ -142,3 +178,4 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+

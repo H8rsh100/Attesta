@@ -1,149 +1,202 @@
+<div align="center">
+
 # Attesta
 
-A decentralized identity and credential verification platform. Authorized issuers mint verifiable on-chain credentials, holders authenticate via Web3 wallet, and any third party can verify authenticity publicly -- no login required.
+### Decentralized Identity & Credential Verification Platform
 
-## Architecture
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Solidity](https://img.shields.io/badge/Solidity-0.8.20-brightgreen.svg)](https://soliditylang.org/)
+[![Network](https://img.shields.io/badge/Network-Sepolia_Testnet-purple.svg)](https://sepolia.etherscan.io/)
+[![Frontend](https://img.shields.io/badge/Frontend-Next.js_14-black.svg)](https://nextjs.org/)
+[![Backend](https://img.shields.io/badge/Backend-Express.js-lightgrey.svg)](https://expressjs.com/)
+[![Tests](https://img.shields.io/badge/Tests-16_Passing-success.svg)](contracts/test/CredentialRegistry.test.js)
+
+<p align="center">
+  A full-stack Web3 platform for issuing, managing, and verifying tamper-proof on-chain credentials. Authorized issuers mint cryptographic commitments on Ethereum Sepolia, while any third party can instantly verify credentials publicly with zero login required.
+</p>
+
+</div>
+
+---
+
+## Highlights
+
+- **Hash-Commit Privacy**: No raw PII (Personally Identifiable Information) or sensitive metadata is ever stored on-chain. Only Keccak256 cryptographic hashes are recorded.
+- **Dual-Layer Access Control**: Issuer permissions are verified off-chain via backend middleware and strictly enforced on-chain through OpenZeppelin AccessControl.
+- **Zero-Password Authentication**: Wallet-signature authentication (SIWE-style) uses cryptographically secure single-use nonces stored in httpOnly cookies.
+- **On-Chain Revocation**: Issuers retain the ability to revoke credentials on-chain, giving verifiers immediate, real-time revocation status.
+- **Public Verification Portal & Instant QR**: Public verification endpoints allow anyone to check authenticity via Credential ID or mobile QR code scanner.
+
+---
+
+## System Architecture
 
 ```
-Next.js Frontend  ->  Express Backend  ->  Sepolia Testnet
-                                       ->  PostgreSQL (metadata)
+                      +-----------------------------+
+                      |   Next.js 14 Web Frontend   |
+                      | (Public Portal & Dashboard) |
+                      +--------------+--------------+
+                                     |
+                         REST API    | httpOnly JWT
+                                     v
+                      +--------------+--------------+
+                      |     Node.js Express API     |
+                      | (Auth, Metadata & Controller|
+                      +-------+--------------+------+
+                              |              |
+                Prisma Client |              | ethers.js JsonRpcProvider
+                              v              v
+                  +-----------+---+      +---+-------------------------+
+                  |  PostgreSQL   |      |  Ethereum Sepolia Testnet   |
+                  | (Off-Chain    |      | (CredentialRegistry.sol     |
+                  |  Metadata)    |      |  OpenZeppelin AccessControl)|
+                  +---------------+      +-----------------------------+
 ```
 
-Full design in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Security model in [docs/SECURITY.md](docs/SECURITY.md)
+Full architectural specifications are detailed in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Detailed security parameters are covered in [docs/SECURITY.md](docs/SECURITY.md).
 
 ---
 
 ## Repository Structure
 
 ```
-attesta/
-contracts/          # Solidity smart contract + Hardhat tests + deploy script
-backend/            # Node.js + Express API
-frontend/           # Next.js app (wallet connect, issuer dashboard, verify page)
-docs/               # Architecture and security docs
+Attesta/
+├── contracts/               # Solidity smart contracts, Hardhat tests & deployment scripts
+│   ├── contracts/
+│   │   └── CredentialRegistry.sol
+│   ├── test/                # Hardhat test suite (16 test cases covering issue, revoke, RBAC)
+│   └── scripts/
+├── backend/                 # Node.js + Express REST API
+│   ├── src/
+│   │   ├── routes/          # Auth, Credentials, Revocation, and Verification endpoints
+│   │   ├── middleware/      # Rate limiters & dual-layer RBAC middleware
+│   │   ├── services/        # Ethers.js contract provider singleton
+│   │   └── db/              # Prisma schema & database migrations
+│   └── test/                # Backend security and utility test suite
+├── frontend/                # Next.js 14 web application
+│   ├── src/
+│   │   ├── app/             # App Router pages (Home, Verify Portal, Issuer Dashboard)
+│   │   └── lib/             # Wagmi & Viem Web3 configurations
+├── docs/                    # Architecture and Security documentation
+├── LICENSE                  # Official MIT License
+└── README.md
 ```
 
 ---
 
-## Setup
+## Getting Started
 
 ### Prerequisites
 
-- Node.js >= 18
-- PostgreSQL (local or cloud -- Supabase/Neon work fine)
-- MetaMask browser extension
-- A Sepolia RPC URL (Infura / Alchemy)
-- A funded Sepolia wallet (for contract deployment)
+- Node.js >= 18.0.0
+- PostgreSQL database (Local, Supabase, or Neon)
+- MetaMask or compatible Web3 wallet
+- Ethereum Sepolia RPC URL (Infura or Alchemy)
 
 ---
 
-### 1. Smart Contracts
+### 1. Smart Contracts Setup
 
 ```bash
 cd contracts
 npm install
-cp .env.example .env
-# Fill in SEPOLIA_RPC_URL and PRIVATE_KEY in .env
 
-# Run tests (uses local Hardhat network -- no RPC key needed)
+# Run unit tests on local Hardhat network (16 passing test cases)
 npm test
 
-# Deploy to Sepolia
+# Deploy CredentialRegistry to Sepolia Testnet
 npm run deploy:sepolia
-# Copy CONTRACT_ADDRESS from output into backend/.env
 ```
 
 ---
 
-### 2. Backend
+### 2. Backend API Setup
 
 ```bash
 cd backend
 npm install
 cp .env.example .env
-# Fill in DATABASE_URL, JWT_SECRET, RPC_URL, CONTRACT_ADDRESS, BACKEND_PRIVATE_KEY
 
-# Set up Postgres and run migrations
+# Configure PostgreSQL connection & Sepolia RPC credentials in .env
+
+# Run Prisma schema migration
 npx prisma generate
 npx prisma migrate dev --schema=src/db/schema.prisma
 
-# Start dev server
+# Start backend server (runs on http://localhost:4000)
 npm run dev
-# Runs on http://localhost:4000
 ```
 
 ---
 
-### 3. Frontend
+### 3. Frontend App Setup
 
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local
-# Fill in NEXT_PUBLIC_CONTRACT_ADDRESS, NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
 
+# Start Next.js development server (runs on http://localhost:3000)
 npm run dev
-# Runs on http://localhost:3000
 ```
 
 ---
 
-## Environment Variables
+## Environment Variables Configuration
 
-### contracts/.env
+### `contracts/.env`
 
 | Variable | Description |
 |---|---|
-| `SEPOLIA_RPC_URL` | Infura/Alchemy Sepolia endpoint |
+| `SEPOLIA_RPC_URL` | Sepolia JSON-RPC endpoint URL |
 | `PRIVATE_KEY` | Deployer wallet private key |
-| `ETHERSCAN_API_KEY` | Optional -- for contract verification |
-| `CONTRACT_ADDRESS` | Populated after deployment |
+| `ETHERSCAN_API_KEY` | Etherscan API key for contract verification |
+| `CONTRACT_ADDRESS` | Deployed `CredentialRegistry` address |
 
-### backend/.env
+### `backend/.env`
 
 | Variable | Description |
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string |
-| `JWT_SECRET` | Long random string for JWT signing |
-| `JWT_EXPIRES_IN` | e.g. `24h` |
-| `RPC_URL` | Sepolia RPC endpoint |
-| `CONTRACT_ADDRESS` | Deployed CredentialRegistry address |
-| `BACKEND_PRIVATE_KEY` | Backend wallet key (pays gas for issuance) |
-| `FRONTEND_URL` | For CORS -- e.g. `http://localhost:3000` |
+| `JWT_SECRET` | Secret key used for signing session JWTs |
+| `JWT_EXPIRES_IN` | Token expiration duration (e.g. `24h`) |
+| `RPC_URL` | Sepolia RPC endpoint URL |
+| `CONTRACT_ADDRESS` | Deployed contract address on Sepolia |
+| `BACKEND_PRIVATE_KEY` | Backend wallet key for executing on-chain transactions |
+| `FRONTEND_URL` | Allowed origin for CORS (e.g. `http://localhost:3000`) |
 
-### frontend/.env.local
+### `frontend/.env.local`
 
 | Variable | Description |
 |---|---|
-| `NEXT_PUBLIC_CONTRACT_ADDRESS` | Deployed CredentialRegistry address |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | From cloud.walletconnect.com |
-| `NEXT_PUBLIC_API_URL` | Backend URL e.g. `http://localhost:4000` |
+| `NEXT_PUBLIC_CONTRACT_ADDRESS` | Deployed `CredentialRegistry` address |
+| `NEXT_PUBLIC_API_URL` | Express backend API URL (`http://localhost:4000`) |
+| `NEXT_PUBLIC_RPC_URL` | Sepolia RPC endpoint for client-side reads |
 
 ---
 
-## Core Flows
+## Core API Reference
 
-**Wallet Auth**: Connect wallet -> GET /api/auth/nonce/:address -> sign nonce -> POST /api/auth/verify-signature -> JWT set in httpOnly cookie.
-
-**Issue Credential**: Issuer connects wallet -> authenticates -> fills form (subject, type, name) -> POST /api/credentials -> contract.issueCredential() on Sepolia -> QR code generated.
-
-**Verify Credential**: Any party -> GET /api/verify/:id -> on-chain verifyCredential() + off-chain metadata -> VALID / REVOKED / NOT_FOUND.
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/auth/nonce/:address` | Public | Request a 256-bit single-use cryptographic nonce |
+| `POST` | `/api/auth/verify-signature` | Public | Submit signed nonce; receives httpOnly JWT cookie |
+| `POST` | `/api/credentials` | Issuer Only | Issue new credential on-chain & store off-chain metadata |
+| `POST` | `/api/credentials/:id/revoke` | Issuer Only | Revoke credential on-chain & update status |
+| `GET` | `/api/verify/:id` | Public | Fetch combined on-chain state & off-chain metadata |
 
 ---
 
-## Security Highlights
+## Security Model Overview
 
-- No passwords. Auth is wallet-signature only (SIWE-style).
-- No PII on-chain. Only keccak256 hashes stored in the contract.
-- RBAC enforced on-chain (contract modifier) AND off-chain (middleware).
-- JWT stored in httpOnly cookie -- not localStorage.
-- Rate limiting on auth (10/15min) and issuance (20/hr) routes.
-- Input validation on all routes via express-validator.
+1. **Zero Raw PII On-Chain**: Hashes (`bytes32`) guarantee data privacy and regulatory compliance.
+2. **Dual-Layer RBAC**: On-chain OpenZeppelin `AccessControl` combined with backend pre-flight verification.
+3. **HTTP-Only Cookies**: JWTs are stored strictly in `httpOnly` cookies with `sameSite=strict` to prevent XSS and CSRF.
+4. **Rate-Limiting**: Express rate limiters protect authentication and issuance routes against brute-force and DDoS vectors.
 
-See [docs/SECURITY.md](docs/SECURITY.md) for the full threat model.
+For complete threat analysis and security details, see [docs/SECURITY.md](docs/SECURITY.md).
 
 ---
 
 ## License
 
-ISC
+This project is licensed under the [MIT License](LICENSE).
